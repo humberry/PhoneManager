@@ -102,6 +102,7 @@ class PhoneManager(ui.View):
     searchstr = ''
 
     def __init__(self):
+        self.elements = []
         self.view = ui.load_view('PhoneManager')
         self.root = os.path.expanduser('~')
         self.rootlen = len(self.root)
@@ -158,36 +159,10 @@ class PhoneManager(ui.View):
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
         self.name = name
-        textview = ui.TextView()
-        textview.name = 'textview'
-        textview.x = 6
-        textview.y = 6
-        textview.width = self.view.width - 12
-        textview.height = 150
-        textview.flex = 'WR'
-        textview.font = ('Courier', 18)
-        textview.text = message
-        textview.editable = False 
-        self.view.add_subview(textview)
-        button = ui.Button()
-        button.name = 'button'
-        button.x = 6
-        button.y = 160
-        button.width = self.view.width - 12
-        button.height = self.view.height - 160
-        button.flex = 'WRH'
-        button.border_color = 'blue'
-        button.border_width = 0.7
-        button.corner_radius = 5
-        button.title = 'Cancel'
-        button.action = self.btn_Help_Cancel
-        self.view.add_subview(button)
-
-    def btn_Help_Cancel(self, sender):
-        self.view.remove_subview(self.view['textview'])
-        self.view.remove_subview(self.view['button'])
-        self.view['scrollview1'].hidden = False 
-        self.view['tableview1'].hidden = False 
+        self.make_textview('textview', message, 6, 6, self.view.width - 12, 150, edit=False)
+        self.view['textview'].flex = 'WR'
+        self.make_button('button', 'Cancel', 6, 160, self.view.width - 12, self.view.height - 160, action=self.btn_Cancel)
+        self.view['button'].flex = 'WRH'
 
     def make_view_browse(self):
         self.view['scrollview1'].hidden = True 
@@ -195,10 +170,7 @@ class PhoneManager(ui.View):
         self.name = self.path_po[self.rootlen:]
         tableview = ui.TableView()
         tableview.name = 'tableview2'
-        tableview.x = 6
-        tableview.y = 6
-        tableview.width = 308
-        tableview.height = 434
+        tableview.frame = (6, 6, 308, 434)
         tableview.border_width = 1
         tableview.border_color = 'blue'
         tableview.corner_radius = 5
@@ -207,38 +179,10 @@ class PhoneManager(ui.View):
         tableview.background_color = 'white'
         tableview.allows_selection = True
         self.view.add_subview(tableview)
-        button1 = ui.Button()
-        button1.name = 'button1'  
-        button1.title = 'Okay'
-        button1.x = 6
-        button1.y = 448
-        button1.width = 150
-        button1.height = 50
-        button1.border_color = 'blue'
-        button1.border_width = 0.7
-        button1.corner_radius = 5
-        button1.action = self.btn_Move_Okay
-        self.view.add_subview(button1)
-        button2 = ui.Button()
-        button2.name = 'button2'
-        button2.title = 'Cancel'
-        button2.x = 164
-        button2.y = 448
-        button2.width = 150
-        button2.height = 50
-        button2.border_color = 'blue'
-        button2.border_width = 0.7
-        button2.corner_radius = 5
-        button2.action = self.close_view_browse
-        self.view.add_subview(button2)
-        
-    def close_view_browse(self, sender):
-        self.view.remove_subview(self.view['tableview2'])
-        self.view.remove_subview(self.view['button1'])
-        self.view.remove_subview(self.view['button2'])
-        self.view['scrollview1'].hidden = False 
-        self.view['tableview1'].hidden = False 
-        
+        self.elements.append('tableview2')
+        self.make_button('button1', 'Okay', 6, 448, 150, 50, action=self.btn_Move_Okay)
+        self.make_button('button2', 'Cancel', 164, 448, 150, 50, action=self.btn_Cancel)
+
     def btn_Move(self, sender):
         self.make_view_browse()
         self.path_po = self.path
@@ -247,19 +191,19 @@ class PhoneManager(ui.View):
 
     def btn_Move_Okay(self, sender):
         if self.filename == '':
-            self.close_view_browse(None)
+            self.remove_view_po()
             self.btn_Help(None,message='No file is selected.',name='Error')
         try:
             if not os.path.isfile(self.path_po + '/' + self.filename):
                 shutil.move(self.path + '/' + self.filename,self.path_po + '/' + self.filename)
                 self.make_lst()
                 self.view['tableview1'].reload_data()
-                self.close_view_browse(None)
+                self.remove_view_po()
             else:
-                self.close_view_browse(None)
+                self.remove_view_po()
                 self.btn_Help(None,message='File already exists in the destination directory.',name='Error')
         except:
-            self.close_view_browse(None)
+            self.remove_view_po()
             self.btn_Help(None,message='Your selected file: ' + self.filename + " doesn't exist in the source directory. Please select the file and then directly press the Move-Button.",name='Error')
 
     def make_lst_po(self):
@@ -294,7 +238,12 @@ class PhoneManager(ui.View):
         pos = url.find('://') # ftp://, http://, https:// >> 3-5
         if pos < 3 or pos > 5:
             url = 'http://www.'
-        self.make_view_po('Download', '', 'Url:', '', url, self.btn_Download_Okay)
+        self.view['scrollview1'].hidden = True 
+        self.view['tableview1'].hidden = True
+        self.make_label('label1', 'Download:', 6, 6, 308, 32)
+        self.make_textfield('textfield1', url, 6, 46, 308, 32)
+        self.make_button('button1', 'Okay', 6, 94, 150, 100, action=self.btn_Download_Okay)
+        self.make_button('button2', 'Cancel', 164, 94, 150, 100, action=self.btn_Cancel)
 
     def btn_Download_Okay(self, sender):
         url = self.view['textfield1'].text
@@ -312,72 +261,15 @@ class PhoneManager(ui.View):
             self.view['tableview1'].reload_data()
         self.remove_view_po()
 
-    def make_view_compress(self):
+    def btn_Compress(self, sender):
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
         self.name = self.path_po[self.rootlen:]
-        textfield1 = ui.TextField()
-        textfield1.name = 'tf_name'
-        textfield1.text = 'Archivename'
-        textfield1.x = 6
-        textfield1.y = 6
-        textfield1.width = 308
-        textfield1.height = 32
-        self.view.add_subview(textfield1)
-        segcontr1 = ui.SegmentedControl()
-        segcontr1.name = 'sc_compression'
-        segcontr1.segments = ['.zip', '.tar', '.tar.gz', '.tar.bz2']
-        segcontr1.selected_index = 0
-        segcontr1.x = 6
-        segcontr1.y = 46
-        segcontr1.width = 308
-        segcontr1.height = 64
-        self.view.add_subview(segcontr1)
-        segcontr2 = ui.SegmentedControl()
-        segcontr2.name = 'sc_range'
-        segcontr2.segments = ['Selected', 'All', '*.py*']
-        segcontr2.selected_index = 0
-        segcontr2.x = 6
-        segcontr2.y = 118
-        segcontr2.width = 308
-        segcontr2.height = 64
-        self.view.add_subview(segcontr2)
-        button1 = ui.Button()
-        button1.name = 'button1'  
-        button1.title = 'Okay'
-        button1.x = 6
-        button1.y = 190
-        button1.width = 150
-        button1.height = 50
-        button1.border_color = 'blue'
-        button1.border_width = 0.7
-        button1.corner_radius = 5
-        button1.action = self.btn_Compress_Okay
-        self.view.add_subview(button1)
-        button2 = ui.Button()
-        button2.name = 'button2'
-        button2.title = 'Cancel'
-        button2.x = 164
-        button2.y = 190
-        button2.width = 150
-        button2.height = 50
-        button2.border_color = 'blue'
-        button2.border_width = 0.7
-        button2.corner_radius = 5
-        button2.action = self.close_view_compress
-        self.view.add_subview(button2)
-
-    def close_view_compress(self, sender):
-        self.view.remove_subview(self.view['tf_name'])
-        self.view.remove_subview(self.view['sc_compression'])
-        self.view.remove_subview(self.view['sc_range'])
-        self.view.remove_subview(self.view['button1'])
-        self.view.remove_subview(self.view['button2'])
-        self.view['scrollview1'].hidden = False 
-        self.view['tableview1'].hidden = False 
-
-    def btn_Compress(self, sender):
-        self.make_view_compress()
+        self.make_textfield('tf_name', 'Archivename', 6, 6, 308, 32)
+        self.make_segcontr('sc_compression', ['.zip', '.tar', '.tar.gz', '.tar.bz2'], 6, 46, 308, 64)
+        self.make_segcontr('sc_range', ['Selected', 'All', '*.py*'], 6, 118, 308, 64)
+        self.make_button('button1', 'Okay', 6, 190, 150, 100, action=self.btn_Compress_Okay)
+        self.make_button('button2', 'Cancel', 164, 190, 150, 100, action=self.btn_Cancel)
 
     def btn_Compress_Okay(self, sender):
         def tar_compress(archive_name, compression, filter=False, fn=[]):
@@ -432,7 +324,7 @@ class PhoneManager(ui.View):
                 tar_compress(archive_name, compression, filter=True, fn=files)
         self.make_lst()
         self.view['tableview1'].reload_data()
-        self.close_view_compress(None)
+        self.remove_view_po()
 
     def get_files(self,filter=False):
         files = []
@@ -480,7 +372,12 @@ class PhoneManager(ui.View):
     def btn_RemoveDir(self, sender):
         pos = self.path.rfind('/')
         dir = self.path[pos:]
-        self.make_view_po('RemoveDir', 'Dir:', '', dir, '', self.btn_RemoveDir_Okay)
+        self.view['scrollview1'].hidden = True 
+        self.view['tableview1'].hidden = True
+        self.make_label('label1', 'Remove Dir:', 6, 6, 308, 32)
+        self.make_textfield('textfield1', dir, 6, 46, 308, 32)
+        self.make_button('button1', 'Okay', 6, 94, 150, 100, action=self.btn_RemoveDir_Okay)
+        self.make_button('button2', 'Cancel', 164, 94, 150, 100, action=self.btn_Cancel)
 
     def btn_RemoveDir_Okay(self, sender):
         shutil.rmtree(self.path)
@@ -492,7 +389,12 @@ class PhoneManager(ui.View):
         self.remove_view_po()
 
     def btn_MakeDir(self, sender):
-        self.make_view_po('MakeDir', '', 'New Dir:', '', '', self.btn_MakeDir_Okay)
+        self.view['scrollview1'].hidden = True 
+        self.view['tableview1'].hidden = True
+        self.make_label('label1', 'Make Dir:', 6, 6, 308, 32)
+        self.make_textfield('textfield1', '', 6, 46, 308, 32)
+        self.make_button('button1', 'Okay', 6, 94, 150, 100, action=self.btn_MakeDir_Okay)
+        self.make_button('button2', 'Cancel', 164, 94, 150, 100, action=self.btn_Cancel)
 
     def btn_MakeDir_Okay(self, sender):
         os.mkdir(self.path + '/' + self.view['textfield1'].text)
@@ -501,7 +403,12 @@ class PhoneManager(ui.View):
         self.remove_view_po()
 
     def btn_Delete(self, sender):
-        self.make_view_po('Delete', 'Name:', '', self.filename, '', self.btn_Delete_Okay)
+        self.view['scrollview1'].hidden = True 
+        self.view['tableview1'].hidden = True
+        self.make_label('label1', 'Delete:', 6, 6, 308, 32)
+        self.make_textfield('textfield1', self.filename, 6, 46, 308, 32)
+        self.make_button('button1', 'Okay', 6, 94, 150, 100, action=self.btn_Delete_Okay)
+        self.make_button('button2', 'Cancel', 164, 94, 150, 100, action=self.btn_Cancel)
 
     def btn_Delete_Okay(self, sender):
         os.remove(self.path + '/' + self.filename)
@@ -510,7 +417,14 @@ class PhoneManager(ui.View):
         self.remove_view_po()
 
     def btn_Copy(self, sender):
-        self.make_view_po('Copy', 'Name:', 'New Name:', self.filename, self.filename, self.btn_Copy_Okay)
+        self.view['scrollview1'].hidden = True 
+        self.view['tableview1'].hidden = True
+        self.make_label('label1', 'Make copy of:', 6, 6, 308, 32)
+        self.make_label('label2', self.filename, 6, 46, 308, 32, color='lightgrey', border=0.5, radius=5)
+        self.make_label('label3', 'New Name:', 6, 94, 308, 32)
+        self.make_textfield('textfield1', self.filename, 6, 134, 308, 32)
+        self.make_button('button1', 'Okay', 6, 182, 150, 100, action=self.btn_Copy_Okay)
+        self.make_button('button2', 'Cancel', 164, 182, 150, 100, action=self.btn_Cancel)
 
     def btn_Copy_Okay(self, sender):
         if self.filename != self.view['textfield1'].text:
@@ -520,7 +434,14 @@ class PhoneManager(ui.View):
         self.remove_view_po()
 
     def btn_Rename(self, sender):
-        self.make_view_po('Rename', 'Old Name:', 'New Name:', self.filename, self.filename, self.btn_Rename_Okay)
+        self.view['scrollview1'].hidden = True 
+        self.view['tableview1'].hidden = True
+        self.make_label('label1', 'Old Name:', 6, 6, 308, 32)
+        self.make_label('label2', self.filename, 6, 46, 308, 32, color='lightgrey', border=0.5, radius=5)
+        self.make_label('label3', 'New Name:', 6, 94, 308, 32)
+        self.make_textfield('textfield1', self.filename, 6, 134, 308, 32)
+        self.make_button('button1', 'Okay', 6, 182, 150, 100, action=self.btn_Rename_Okay)
+        self.make_button('button2', 'Cancel', 164, 182, 150, 100, action=self.btn_Cancel)
 
     def btn_Rename_Okay(self, sender):
         os.rename(self.path + '/' + self.filename, self.path + '/' + self.view['textfield1'].text)
@@ -531,77 +452,66 @@ class PhoneManager(ui.View):
     def btn_Cancel(self, sender):
         self.remove_view_po()
 
-    def make_view_po(self, hl, l1, l2, l3, tf, action):
-        self.view['scrollview1'].hidden = True 
-        self.view['tableview1'].hidden = True
-        self.name = hl
-        label1 = ui.Label()
-        label1.name = 'label1'
-        label1.text = l1
-        label1.x = 6
-        label1.y = 6
-        label1.width = 308
-        label1.height = 32
-        self.view.add_subview(label1)
-        label2 = ui.Label()
-        label2.name = 'label2'
-        label2.text = l2
-        label2.x = 6
-        label2.y = 94
-        label2.width = 308
-        label2.height = 32
-        self.view.add_subview(label2)
-        label3 = ui.Label()
-        label3.name = 'label3'
-        label3.text = ' ' + l3
-        label3.x = 6
-        label3.y = 46
-        label3.width = 308
-        label3.height = 32
-        label3.border_color = 'lightgrey'
-        label3.border_width = 0.5
-        label3.corner_radius = 5
-        self.view.add_subview(label3)
-        textfield1 = ui.TextField()
-        textfield1.name = 'textfield1'
-        textfield1.text = tf
-        textfield1.x = 6
-        textfield1.y = 134
-        textfield1.width = 308
-        textfield1.height = 32
-        self.view.add_subview(textfield1)
-        button1 = ui.Button()
-        button1.name = 'button1'  
-        button1.title = 'Okay'
-        button1.x = 6
-        button1.y = 192
-        button1.width = 150
-        button1.height = 90
-        button1.border_color = 'blue'
-        button1.border_width = 0.7
-        button1.corner_radius = 5
-        button1.action = action
-        self.view.add_subview(button1)
-        button2 = ui.Button()
-        button2.name = 'button2'
-        button2.title = 'Cancel'
-        button2.x = 164
-        button2.y = 192
-        button2.width = 150
-        button2.height = 90 
-        button2.border_color = 'blue'
-        button2.border_width = 0.7
-        button2.corner_radius = 5
-        button2.action = self.btn_Cancel
-        self.view.add_subview(button2)
+    def make_label(self, name, text, x, y, width, height, color=None, border=None, radius=None):
+        label = ui.Label()
+        label.name = name
+        label.text = text
+        label.frame = (x, y, width, height)
+        if color != None:
+          label.border_color = color
+          label.border_width = border
+          label.corner_radius = radius
+        self.view.add_subview(label)
+        self.elements.append(name)
+
+    def make_textfield(self, name, text, x, y, width, height):
+        textfield = ui.TextField()
+        textfield.name = name
+        textfield.text = text
+        textfield.frame = (x, y, width, height)
+        self.view.add_subview(textfield)
+        self.elements.append(name)
+
+    def make_button(self, name, title, x, y, width, height, action, color='blue', border=0.7, radius=5):
+        button = ui.Button()
+        button.name = name 
+        button.title = title
+        button.frame = (x, y, width, height)
+        button.border_color = color
+        button.border_width = border
+        button.corner_radius = radius
+        button.action = action
+        self.view.add_subview(button)
+        self.elements.append(name)
+
+    def make_segcontr(self, name, segments, x, y, width, height):
+        segcontr = ui.SegmentedControl()
+        segcontr.name = name
+        segcontr.segments = segments
+        segcontr.selected_index = 0
+        segcontr.frame = (x, y, width, height)
+        self.view.add_subview(segcontr)
+        self.elements.append(name)
+
+    def make_textview(self, name, text, x, y, width, height, edit=True, color=None, border=None, radius=None):
+        textview = ui.TextView()
+        textview.name = name
+        textview.text = text
+        textview.frame = (x, y, width, height)
+        if color != None:
+            textview.border_color = 'lightgrey'
+            textview.border_width = 0.5
+            textview.corner_radius = 5
+        if edit == False:
+            textview.font = ('Courier', 11)
+            textview.editable = False 
+        self.view.add_subview(textview)
+        self.elements.append(name)
 
     def remove_view_po(self):
-        self.view.remove_subview(self.view['label1'])
-        self.view.remove_subview(self.view['label2'])
-        self.view.remove_subview(self.view['label3'])
-        self.view.remove_subview(self.view['textfield1'])
-        self.view.remove_subview(self.view['button1'])
-        self.view.remove_subview(self.view['button2'])
+        for element in self.elements:
+          self.view.remove_subview(self.view[element])
+        self.elements = []
         self.view['scrollview1'].hidden = False 
         self.view['tableview1'].hidden = False 
 
@@ -609,10 +519,7 @@ class PhoneManager(ui.View):
         tableview = ui.TableView()
         tableview.name = 'tableview1'
         tableview.frame = self.frame
-        tableview.x = 0
-        tableview.y = 50
-        tableview.width = 320
-        tableview.height = 454
+        tableview.frame = (0, 50, 320, 454)
         tableview.border_width = 1
         tableview.border_color = 'blue'
         tableview.corner_radius = 5
@@ -678,44 +585,14 @@ class PhoneManager(ui.View):
     def hexview_a_file(self, filename):
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
-        self.name = filename
-        textfield1 = ui.TextField()
-        textfield1.name = 'tf_search'
-        textfield1.text = ''
-        textfield1.x = 6
-        textfield1.y = 6
-        textfield1.width = self.view.width - 118
-        textfield1.height = 32
-        textfield1.flex = 'WR'
-        self.view.add_subview(textfield1)
-        button1 = ui.Button()
-        button1.name = 'btn_search'
-        button1.title = 'Search'
-        button1.x = self.view.width - 106
-        button1.y = 6
-        button1.width = 100
-        button1.height = 32
-        button1.flex = 'WL'
-        button1.border_color = 'blue'
-        button1.border_width = 0.7
-        button1.corner_radius = 5
-        button1.action = self.button_action
-        self.view.add_subview(button1)
+        self.view.name = filename
+        self.make_textfield('tf_search', '', 6, 6, self.view.width - 118, 32)
+        self.view['tf_search'].flex = 'WR'
+        self.make_button('btn_search', 'Search', self.view.width - 106, 6, 100, 32, self.button_action)
+        self.view['btn_search'].flex = 'WL'
         full_pathname = self.path + '/' + filename
-        textview1 = ui.TextView()
-        textview1.name = 'tv_data'
-        textview1.text = hex_view(full_pathname)
-        textview1.x = 6
-        textview1.y = 46
-        textview1.width = self.view.width - 12
-        textview1.height = 452
-        textview1.flex = 'WR'
-        textview1.border_color = 'lightgrey'
-        textview1.border_width = 0.5
-        textview1.corner_radius = 5
-        textview1.font = ('Courier', 11)
-        textview1.editable = False 
-        self.view.add_subview(textview1)
+        self.make_textview('tv_data', hex_view(full_pathname), 6, 46, self.view.width - 12, 452, edit=False, color='lightgrey', border=0.5, radius=5)
+        self.view['tv_data'].flex = 'WR'
 
     @ui.in_background
     def fileinfo(self, sender):
