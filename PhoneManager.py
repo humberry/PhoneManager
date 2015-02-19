@@ -97,11 +97,12 @@ class MyImageView(ui.View):
         else:
             print 'This should never happen. :('
 
-class PhoneManager(ui.View):
+class PhoneManager(object):
     pos = -1
     searchstr = ''
 
     def __init__(self):
+        self.temp = None
         self.elements = []
         self.view = ui.load_view('PhoneManager')
         self.root = os.path.expanduser('~')
@@ -109,7 +110,9 @@ class PhoneManager(ui.View):
         self.path = os.getcwd()
         self.path_po = self.path
         self.view.name = self.path[self.rootlen:]
-        self.tableview1 = self.make_tableview1()
+        self.make_tableview('tableview1', 0, 50, 320, 454)
+        self.tableview1 = self.view['tableview1']
+        self.tableview1.flex = 'WH'
         self.lst = self.make_lst()
         self.lst_po = self.lst
         self.filename = ''
@@ -156,9 +159,10 @@ class PhoneManager(ui.View):
         self.view['tableview1'].reload_data()
 
     def btn_Help(self, sender, message='Use at your own risk. \nNo error handling!', name='Help'):
+        self.temp = self.view.name
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
-        self.name = name
+        self.view.name = name
         self.make_textview('textview', message, 6, 6, self.view.width - 12, 150, edit=False)
         self.view['textview'].flex = 'WR'
         self.make_button('button', 'Cancel', 6, 160, self.view.width - 12, self.view.height - 160, action=self.btn_Cancel)
@@ -168,20 +172,12 @@ class PhoneManager(ui.View):
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
         self.name = self.path_po[self.rootlen:]
-        tableview = ui.TableView()
-        tableview.name = 'tableview2'
-        tableview.frame = (6, 6, 308, 434)
-        tableview.border_width = 1
-        tableview.border_color = 'blue'
-        tableview.corner_radius = 5
-        tableview.row_height = 40
-        tableview.bg_color = 'black'
-        tableview.background_color = 'white'
-        tableview.allows_selection = True
-        self.view.add_subview(tableview)
-        self.elements.append('tableview2')
-        self.make_button('button1', 'Okay', 6, 448, 150, 50, action=self.btn_Move_Okay)
-        self.make_button('button2', 'Cancel', 164, 448, 150, 50, action=self.btn_Cancel)
+        self.make_tableview('tableview2', 6, 6, self.view.width - 12, self.view.height - 68)
+        self.view['tableview2'].flex = 'WH'
+        self.make_button('button1', 'Okay', 6, self.view.height - 56, 150, 50, action=self.btn_Move_Okay)
+        self.view['button1'].flex = 'RT'
+        self.make_button('button2', 'Cancel', self.view.width - 156, self.view.height - 56, 150, 50, action=self.btn_Cancel)
+        self.view['button2'].flex = 'LT'
 
     def btn_Move(self, sender):
         self.make_view_browse()
@@ -194,15 +190,15 @@ class PhoneManager(ui.View):
             self.remove_view_po()
             self.btn_Help(None,message='No file is selected.',name='Error')
         try:
-            if not os.path.isfile(self.path_po + '/' + self.filename):
+            if not os.path.isfile(self.path_po + '/' + self.filename): # file  doesn't exist
                 shutil.move(self.path + '/' + self.filename,self.path_po + '/' + self.filename)
                 self.make_lst()
                 self.view['tableview1'].reload_data()
                 self.remove_view_po()
-            else:
+            else: # file exist
                 self.remove_view_po()
                 self.btn_Help(None,message='File already exists in the destination directory.',name='Error')
-        except:
+        except: # move error
             self.remove_view_po()
             self.btn_Help(None,message='Your selected file: ' + self.filename + " doesn't exist in the source directory. Please select the file and then directly press the Move-Button.",name='Error')
 
@@ -499,9 +495,9 @@ class PhoneManager(ui.View):
         textview.text = text
         textview.frame = (x, y, width, height)
         if color != None:
-            textview.border_color = 'lightgrey'
-            textview.border_width = 0.5
-            textview.corner_radius = 5
+            textview.border_color = color
+            textview.border_width = border
+            textview.corner_radius = radius
         if edit == False:
             textview.font = ('Courier', 11)
             textview.editable = False 
@@ -514,22 +510,24 @@ class PhoneManager(ui.View):
         self.elements = []
         self.view['scrollview1'].hidden = False 
         self.view['tableview1'].hidden = False 
+        if self.temp != None:
+          self.view.name = self.temp
+          self.temp = None
 
-    def make_tableview1(self):
+    def make_tableview(self, name, x, y, width, height):
         tableview = ui.TableView()
-        tableview.name = 'tableview1'
-        tableview.frame = self.frame
-        tableview.frame = (0, 50, 320, 454)
+        tableview.name = name
+        tableview.frame = (x, y, width, height)
         tableview.border_width = 1
         tableview.border_color = 'blue'
         tableview.corner_radius = 5
-        tableview.flex = 'WH'
         tableview.row_height = 40
         tableview.bg_color = 'black'
         tableview.background_color = 'white'
         tableview.allows_selection = True
         self.view.add_subview(tableview)
-        return tableview
+        if name != 'tableview1':  #files view
+            self.elements.append(name)
 
     def make_lst(self):
         dirs_and_files = get_dir(self.path)
@@ -556,7 +554,7 @@ class PhoneManager(ui.View):
         else:
             self.filename = filename_tapped
 
-    def button_action(self, sender):
+    def btn_Search(self, sender):
         tvd = self.view['tv_data']
         tfss = self.view['tf_search']
         if tfss.text != '':
@@ -586,9 +584,10 @@ class PhoneManager(ui.View):
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
         self.view.name = filename
-        self.make_textfield('tf_search', '', 6, 6, self.view.width - 118, 32)
+        self.make_button('btn_close', 'X', 6, 6, 32, 32, self.btn_Cancel)
+        self.make_textfield('tf_search', '', 44, 6, self.view.width - 156, 32)
         self.view['tf_search'].flex = 'WR'
-        self.make_button('btn_search', 'Search', self.view.width - 106, 6, 100, 32, self.button_action)
+        self.make_button('btn_search', 'Search', self.view.width - 106, 6, 100, 32, self.btn_Search)
         self.view['btn_search'].flex = 'WL'
         full_pathname = self.path + '/' + filename
         self.make_textview('tv_data', hex_view(full_pathname), 6, 46, self.view.width - 12, 452, edit=False, color='lightgrey', border=0.5, radius=5)
