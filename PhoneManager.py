@@ -194,7 +194,9 @@ class PhoneManager(object):
         self.make_lst()
         self.view['tableview1'].reload_data()
 
-    def btn_Help(self, sender, message='Use at your own risk. \nNo error handling!', name='Help'):
+    def btn_Help(self, sender, message='', name='Help'):
+        if message == '':
+            message = 'Scroll buttons to the left for all commands.\nRemoveDir deletes everthing in the current dir (files and subdirs)\nExtract always creates a subdir with the archivename\nPicView now browses all JPEGs\nMove and Rename are changing the directory path/name when no file is selected!!!\nUse at your own risk. Error handling is sometimes missing!'
         self.temp = self.view.name
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
