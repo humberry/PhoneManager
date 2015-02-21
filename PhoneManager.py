@@ -69,7 +69,7 @@ class MyImageView(ui.View):
         self.img.draw(self.x_off,self.y_off,self.img_width*self.ratio/self.scr_cor,self.img_height*self.ratio/self.scr_cor)
 
     def touch_began(self, touch):
-        self.close()
+        self.close()#load next image (array + counter / loop until close?)
 
     def layout(self):
         scr_height_real = self.height * self.scr_cor
@@ -186,21 +186,25 @@ class PhoneManager(object):
         self.view['tableview2'].reload()
 
     def btn_Move_Okay(self, sender):
-        if self.filename == '':
-            self.remove_view_po()
-            self.btn_Help(None,message='No file is selected.',name='Error')
         try:
-            if not os.path.isfile(self.path_po + '/' + self.filename): # file  doesn't exist
-                shutil.move(self.path + '/' + self.filename,self.path_po + '/' + self.filename)
+            if self.filename == '':  #move directory
+                shutil.move(self.path,self.path_po)
+                self.path = self.path_po
                 self.make_lst()
                 self.view['tableview1'].reload_data()
                 self.remove_view_po()
-            else: # file exist
-                self.remove_view_po()
-                self.btn_Help(None,message='File already exists in the destination directory.',name='Error')
-        except: # move error
+            else:
+                if not os.path.isfile(self.path_po + '/' + self.filename): # file  doesn't exist
+                    shutil.move(self.path + '/' + self.filename,self.path_po + '/' + self.filename)
+                    self.make_lst()
+                    self.view['tableview1'].reload_data()
+                    self.remove_view_po()
+                else: # file exist
+                    self.remove_view_po()
+                    self.btn_Help(None,message='File already exists in the destination directory.',name='Error')
+        except Exception, e: # move error
             self.remove_view_po()
-            self.btn_Help(None,message='Your selected file: ' + self.filename + " doesn't exist in the source directory. Please select the file and then directly press the Move-Button.",name='Error')
+            self.btn_Help(None,message=str(e),name='Error')
 
     def make_lst_po(self):
         dirs = get_dirs(self.path_po)
@@ -244,7 +248,7 @@ class PhoneManager(object):
     def btn_Download_Okay(self, sender):
         url = self.view['textfield1'].text
         pos = url.find('://') # ftp://, http://, https:// >> 3-5
-        if pos > 2 or pos < 6:
+        if pos > 2 and pos < 6:
             pos = url.rfind('/') + 1
             filename = url[pos:]
             dl = requests.get(url, stream=True)
@@ -255,7 +259,10 @@ class PhoneManager(object):
                         f.flush()
             self.make_lst()
             self.view['tableview1'].reload_data()
-        self.remove_view_po()
+            self.remove_view_po()
+        else:
+            self.remove_view_po()
+            self.btn_Help(None,message='Please start url with ftp://, http:// or https://.',name='Error')
 
     def btn_Compress(self, sender):
         self.view['scrollview1'].hidden = True 
@@ -380,6 +387,7 @@ class PhoneManager(object):
         pos = self.path.rfind('/')
         dir = self.path[:pos]
         self.path = dir
+        self.view.name = self.path[self.rootlen:]
         self.make_lst()
         self.view['tableview1'].reload_data()
         self.remove_view_po()
@@ -440,10 +448,17 @@ class PhoneManager(object):
         self.make_button('button2', 'Cancel', 164, 182, 150, 100, action=self.btn_Cancel)
 
     def btn_Rename_Okay(self, sender):
-        os.rename(self.path + '/' + self.filename, self.path + '/' + self.view['textfield1'].text)
-        self.remove_view_po()
+        if self.filename == '':  #rename directory
+            pos = self.path.rfind('/')
+            dir = self.path[:pos + 1] + self.view['textfield1'].text
+            os.rename(self.path + '/', dir + '/')
+            self.path = dir
+            self.view.name = dir[self.rootlen:]
+        else:
+            os.rename(self.path + '/' + self.filename, self.path + '/' + self.view['textfield1'].text)
         self.make_lst()
         self.view['tableview1'].reload_data()
+        self.remove_view_po()
 
     def btn_Cancel(self, sender):
         self.remove_view_po()
@@ -551,6 +566,7 @@ class PhoneManager(object):
             self.view.name = self.path[self.rootlen:]
             self.lst = self.make_lst()
             self.tableview1.reload()
+            self.filename = ''
         else:
             self.filename = filename_tapped
 
