@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import datetime, os, ui, shutil, console, sys, clipboard, requests, zipfile, zlib, tarfile, photos, editor, time
+from PIL import Image
 
 def get_dir(path = os.path.expanduser('~')):
     dirs  = [] if path == os.path.expanduser('~') else ['..']
@@ -33,6 +34,18 @@ def get_dirs(path = os.path.expanduser('~')):
     dirs = ['/' + directory for directory in dir]
     return dirs
 
+def get_jpgs(path):
+    files = []
+    i = 0
+    for entry in sorted(os.listdir(path)):
+        if os.path.isfile(path + '/' + entry):
+            ext = entry[len(entry)-4:]
+            if ext == '.jpg' or ext == '.JPG':
+                files.append(entry)
+                i += 1
+    sorted(files)
+    return files
+
 def hex_view(filepath):
     return_value = ''
     try:
@@ -49,16 +62,25 @@ def hex_view(filepath):
     return return_value
 
 class MyImageView(ui.View):
-    def __init__(self,x,y,color,img):
-        self.color = color
-        self.x_off = x
-        self.y_off = y
+    def __init__(self,path,file,jpgs,index):
+        self.color = 'white'
+        self.x_off = 0
+        self.y_off = 0
         self.scr_height = None 
         self.scr_width = None 
-        self.img = img
-        self.img_width, self.img_height = self.img.size
+        self.img = ui.Image.named(path + '/' + file)
         self.scr_cor = 2.0
         self.ratio = 1.0
+        self.path = path
+        self.file = file
+        self.jpgs = jpgs
+        self.index = index
+        self.len_jpgs = len(jpgs)
+        if self.img != None:
+            self.img_width, self.img_height = self.img.size
+            self.name = self.file + ' (' + str(self.img_width) + ',' + str(self.img_height) + ')'
+        else:
+            self.touch_began(None)
 
     def draw(self):
         self.scr_height = self.height
@@ -69,7 +91,20 @@ class MyImageView(ui.View):
         self.img.draw(self.x_off,self.y_off,self.img_width*self.ratio/self.scr_cor,self.img_height*self.ratio/self.scr_cor)
 
     def touch_began(self, touch):
-        self.close()#load next image (array + counter / loop until close?)
+        self.index += 1
+        if self.index < self.len_jpgs:
+            self.img = ui.Image.named(self.path + '/' + self.jpgs[self.index])
+        else:
+            self.index = 0
+            self.img = ui.Image.named(self.path + '/' + self.jpgs[self.index])
+        if self.img != None:
+            self.img_width, self.img_height = self.img.size
+            self.name = self.jpgs[self.index] + ' (' + str(self.img_width) + ',' + str(self.img_height) + ')'
+            self.layout()
+            self.set_needs_display()
+        else:
+            self.touch_began(None)
+        #self.close()
 
     def layout(self):
         scr_height_real = self.height * self.scr_cor
@@ -140,10 +175,11 @@ class PhoneManager(object):
         self.view.close()
 
     def btn_PicView(self, sender):
-        img = ui.Image.named(self.path + '/' + self.filename)
-        self.view_po = MyImageView(0,0,'white',img)
-        self.view_po.name = self.filename + '  ' + str(img.size)
-        self.view_po.present('full_screen')
+        if self.filename != '':
+            jpgs = get_jpgs(self.path)
+            index = jpgs.index(self.filename)
+            self.view_po = MyImageView(self.path,self.filename,jpgs,index)
+            self.view_po.present('full_screen')
 
     @ui.in_background
     def btn_GetPic(self, sender):
