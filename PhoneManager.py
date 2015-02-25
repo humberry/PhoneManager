@@ -139,7 +139,7 @@ class PhoneManager(object):
     def __init__(self):
         self.temp = None
         self.elements = []
-        self.view = ui.load_view('PhoneManager')
+        self.view = ui.load_view('PhoneManager2')
         self.root = os.path.expanduser('~')
         self.rootlen = len(self.root)
         self.path = os.getcwd()
@@ -151,6 +151,7 @@ class PhoneManager(object):
         self.lst = self.make_lst()
         self.lst_po = self.lst
         self.filename = ''
+        self.files = []
         self.set_button_actions()
         self.view.present('full_screen')
 
@@ -160,26 +161,42 @@ class PhoneManager(object):
                 subview.action = getattr(self, subview.name)
 
     def btn_HTMLview(self, sender):
-        self.view_po = ui.View()
-        self.view_po.name = self.filename
-        wv = ui.WebView()
-        wv.width = self.view.width
-        wv.height = self.view.height
-        wv.flex = 'WH'
-        self.view_po.add_subview(wv)
-        self.view_po.present('full_screen')
-        wv.load_url(self.path + '/' + self.filename)
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows > 0 and sel_rows < 2:
+          row = self.view['tableview1'].selected_row[1]
+          self.view_po = ui.View()
+          self.view_po.name = self.view['tableview1'].data_source.items[row]['title']
+          wv = ui.WebView()
+          wv.width = self.view.width
+          wv.height = self.view.height
+          wv.flex = 'WH'
+          self.view_po.add_subview(wv)
+          self.view_po.present('full_screen')
+          wv.load_url(self.path + '/' + self.filename)
+        else:
+          self.btn_Help(None,message='Please select one file.',name='Error')
 
     def btn_Edit(self, sender):
-        editor.open_file(self.path + '/' + self.filename)
-        self.view.close()
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows > 0 and sel_rows < 2:
+          row = self.view['tableview1'].selected_row[1]
+          filename = self.view['tableview1'].data_source.items[row]['title']
+          editor.open_file(self.path + '/' + filename)
+          self.view.close()
+        else:
+          self.btn_Help(None,message='Please select one file.',name='Error')
 
     def btn_PicView(self, sender):
-        if self.filename != '':
-            jpgs = get_jpgs(self.path)
-            index = jpgs.index(self.filename)
-            self.view_po = MyImageView(self.path,self.filename,jpgs,index)
-            self.view_po.present('full_screen')
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows > 0 and sel_rows < 2:
+          row = self.view['tableview1'].selected_row[1]
+          filename = self.view['tableview1'].data_source.items[row]['title']
+          jpgs = get_jpgs(self.path)
+          index = jpgs.index(filename)
+          self.view_po =MyImageView(self.path,filename,jpgs,index)
+          self.view_po.present('full_screen')
+        else:
+          self.btn_Help(None,message='Please select start file.',name='Error')
 
     @ui.in_background
     def btn_GetPic(self, sender):
@@ -196,7 +213,7 @@ class PhoneManager(object):
 
     def btn_Help(self, sender, message='', name='Help'):
         if message == '':
-            message = 'Scroll buttons to the left for all commands.\nRemoveDir deletes everthing in the current dir (files and subdirs)\nExtract always creates a subdir with the archivename\nPicView now browses all JPEGs\nMove and Rename are changing the directory path/name when no file is selected!!!\nUse at your own risk. Error handling is sometimes missing!'
+            message = 'Scroll buttons to the left for all commands.\nRemoveDir deletes everthing in the current dir (files and subdirs).\nExtract always creates a subdir with the archivename.\nPicView now browses all JPEGs.\nMove and Rename are changing the directory path/name when no file is selected!!!\nMultiselect for move, copy, delete and compress.\nUse at your own risk. Error handling is sometimes missing!'
         self.temp = self.view.name
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
@@ -218,28 +235,35 @@ class PhoneManager(object):
         self.view['button2'].flex = 'LT'
 
     def btn_Move(self, sender):
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows > 0:
+          self.files = []
+          for row in self.view['tableview1'].selected_rows:
+            self.files.append(self.view['tableview1'].data_source.items[row[1]]['title'])
         self.make_view_browse()
         self.path_po = self.path
         self.make_lst_po()
         self.view['tableview2'].reload()
 
     def btn_Move_Okay(self, sender):
+        sel_rows = len(self.view['tableview1'].selected_rows)
         try:
-            if self.filename == '':  #move directory
+            if sel_rows == 0:
                 shutil.move(self.path,self.path_po)
                 self.path = self.path_po
                 self.make_lst()
                 self.view['tableview1'].reload_data()
                 self.remove_view_po()
             else:
-                if not os.path.isfile(self.path_po + '/' + self.filename): # file  doesn't exist
-                    shutil.move(self.path + '/' + self.filename,self.path_po + '/' + self.filename)
+                for filename in self.files:
+                  if not os.path.isfile(self.path_po + '/' + filename): # file  doesn't exist
+                    shutil.move(self.path + '/' + filename,self.path_po + '/' + filename)
                     self.make_lst()
                     self.view['tableview1'].reload_data()
                     self.remove_view_po()
-                else: # file exist
+                  else: # file exist
                     self.remove_view_po()
-                    self.btn_Help(None,message='File already exists in the destination directory.',name='Error')
+                    self.btn_Help(None,message='File: ' + filename + ' already exists in the destination directory.',name='Error')
         except Exception, e: # move error
             self.remove_view_po()
             self.btn_Help(None,message=str(e),name='Error')
@@ -268,27 +292,42 @@ class PhoneManager(object):
 
     @ui.in_background
     def btn_OpenIn(self, sender):
-        file = self.path + '/' + self.filename
-        console.open_in(file)
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows > 0 and sel_rows < 2:
+          row = self.view['tableview1'].selected_row[1]
+          filename = self.view['tableview1'].data_source.items[row]['title']
+          file = self.path + '/' + filename
+          console.open_in(file)
+        else:
+          self.btn_Help(None,message='Please select one file.',name='Error')
 
     def btn_Download(self, sender):
         url = clipboard.get()
         pos = url.find('://') # ftp://, http://, https:// >> 3-5
         if pos < 3 or pos > 5:
             url = 'http://www.'
+            filename = ''
+        else:
+            pos = url.rfind('/') + 1
+            filename = url[pos:]
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
         self.make_label('label1', 'Download:', 6, 6, 308, 32)
         self.make_textfield('textfield1', url, 6, 46, 308, 32)
-        self.make_button('button1', 'Okay', 6, 94, 150, 100, action=self.btn_Download_Okay)
-        self.make_button('button2', 'Cancel', 164, 94, 150, 100, action=self.btn_Cancel)
+        self.make_label('label3', 'Filename:', 6, 94, 308, 32)
+        self.make_textfield('textfield2', filename, 6, 134, 308, 32)
+        self.make_button('button1', 'Okay', 6, 182, 150, 100, action=self.btn_Download_Okay)
+        self.make_button('button2', 'Cancel', 164, 182, 150, 100, action=self.btn_Cancel) #94
 
     def btn_Download_Okay(self, sender):
         url = self.view['textfield1'].text
         pos = url.find('://') # ftp://, http://, https:// >> 3-5
         if pos > 2 and pos < 6:
-            pos = url.rfind('/') + 1
-            filename = url[pos:]
+            if self.view['textfield2'].text == '':
+                pos = url.rfind('/') + 1
+                filename = url[pos:]
+            else:
+                filename = self.view['textfield2'].text
             dl = requests.get(url, stream=True)
             with open(self.path + '/' + filename, 'wb') as f:
                 for chunk in dl.iter_content(chunk_size=1024):
@@ -313,7 +352,7 @@ class PhoneManager(object):
         self.make_button('button2', 'Cancel', 164, 190, 150, 100, action=self.btn_Cancel)
 
     def btn_Compress_Okay(self, sender):
-        def tar_compress(archive_name, compression, filter=False, fn=[]):
+        def tar_compress(archive_name, compression, filter=False, files=[]):
             if compression == 'tar':
                 archive_name += '.tar'
                 mode = 'w'
@@ -325,12 +364,18 @@ class PhoneManager(object):
                 mode = 'w:bz2'
             tar = tarfile.open(archive_name, mode)
             if filter:
-                for file in fn:
+                for file in files:
                     tar.add(self.path + '/' + file,arcname=file)
             else:
-                tar.add(self.path + '/' + self.filename,arcname=self.filename)
+                tar.add(self.path + '/' + self.filename,arcname=files[0])
             tar.close()
-
+            
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        files = []
+        if sel_rows > 0:
+          #self.files = []
+          for row in self.view['tableview1'].selected_rows:
+            files.append(self.view['tableview1'].data_source.items[row[1]]['title'])
         comp = self.view['sc_compression'].selected_index
         compression = ''
         mode = ''
@@ -344,25 +389,25 @@ class PhoneManager(object):
             compression = 'gztar'
         else:
             compression = 'bztar'
-        if rang == 0: # selected file
+        if rang == 0 and sel_rows == 1: # selected file
             if compression == 'zip':
                 zf = zipfile.ZipFile(archive_name + '.zip', mode='w')
-                zf.write(self.path + '/' + self.filename, os.path.basename(self.path + '/' + self.filename), compress_type=zipfile.ZIP_DEFLATED)
+                zf.write(self.path + '/' + files[0], os.path.basename(self.path + '/' + files[0]), compress_type=zipfile.ZIP_DEFLATED)
                 zf.close()
             else:
-                tar_compress(archive_name, compression)
+                tar_compress(archive_name, compression, filter=False, files=files)
         else:
             if rang == 1: # all files
                 files = self.get_files()
             elif rang == 2: # only python files (*.py*)
-                files = self.get_files(filter=True )
+                files = self.get_files(filter=True)
             if compression == 'zip':
                 zf = zipfile.ZipFile(archive_name + '.zip', mode='w')
                 for file in files:
                     zf.write(self.path + '/' + file, os.path.basename(self.path + '/' + file), compress_type=zipfile.ZIP_DEFLATED)
                 zf.close()
             else:
-                tar_compress(archive_name, compression, filter=True, fn=files)
+                tar_compress(archive_name, compression, filter=True, files=files)
         self.make_lst()
         self.view['tableview1'].reload_data()
         self.remove_view_po()
@@ -379,6 +424,8 @@ class PhoneManager(object):
         return files
 
     def btn_Extract(self, sender):
+      sel_rows = len(self.view['tableview1'].selected_rows)
+      if sel_rows == 1:
         pos = self.filename.rfind('.')
         ext = self.filename[pos+1:]
         dir_name = ''
@@ -405,10 +452,17 @@ class PhoneManager(object):
             pass
         self.make_lst()
         self.view['tableview1'].reload_data()
+      else:
+        self.btn_Help(None,message='Please select one file.',name='Error')
 
     def btn_HexView(self, sender):
-        if self.filename != '':
-            self.hexview_a_file(self.filename)
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows > 0 and sel_rows < 2:
+          row = self.view['tableview1'].selected_row[1]
+          filename = self.view['tableview1'].data_source.items[row]['title']
+          self.hexview_a_file(filename)
+        else:
+          self.btn_Help(None,message='Please select one file.',name='Error')
 
     def btn_RemoveDir(self, sender):
         pos = self.path.rfind('/')
@@ -445,45 +499,101 @@ class PhoneManager(object):
         self.remove_view_po()
 
     def btn_Delete(self, sender):
-        self.view['scrollview1'].hidden = True 
-        self.view['tableview1'].hidden = True
-        self.make_label('label1', 'Delete:', 6, 6, 308, 32)
-        self.make_textfield('textfield1', self.filename, 6, 46, 308, 32)
-        self.make_button('button1', 'Okay', 6, 94, 150, 100, action=self.btn_Delete_Okay)
-        self.make_button('button2', 'Cancel', 164, 94, 150, 100, action=self.btn_Cancel)
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows > 0:
+          self.files = []
+          for row in self.view['tableview1'].selected_rows:
+            self.files.append(self.view['tableview1'].data_source.items[row[1]]['title'])
+          self.view['scrollview1'].hidden = True 
+          self.view['tableview1'].hidden = True
+          self.make_label('label1', 'Delete:', 6, 6, 308, 32)
+          if sel_rows == 1:
+            self.make_textfield('textfield1', self.filename, 6, 46, 308, 32)
+          else:
+            self.make_textfield('textfield1', str(sel_rows) + ' files?', 6, 46, 308, 32)
+          self.make_button('button1', 'Okay', 6, 94, 150, 100, action=self.btn_Delete_Okay)
+          self.make_button('button2', 'Cancel', 164, 94, 150, 100, action=self.btn_Cancel)
+        else:
+          self.btn_Help(None,message='Please select one file.',name='Error')
 
     def btn_Delete_Okay(self, sender):
-        os.remove(self.path + '/' + self.filename)
+        for filename in self.files:
+          os.remove(self.path + '/' + filename)
         self.make_lst()
         self.view['tableview1'].reload_data()
         self.remove_view_po()
 
     def btn_Copy(self, sender):
-        self.view['scrollview1'].hidden = True 
-        self.view['tableview1'].hidden = True
-        self.make_label('label1', 'Make copy of:', 6, 6, 308, 32)
-        self.make_label('label2', self.filename, 6, 46, 308, 32, color='lightgrey', border=0.5, radius=5)
-        self.make_label('label3', 'New Name:', 6, 94, 308, 32)
-        self.make_textfield('textfield1', self.filename, 6, 134, 308, 32)
-        self.make_button('button1', 'Okay', 6, 182, 150, 100, action=self.btn_Copy_Okay)
-        self.make_button('button2', 'Cancel', 164, 182, 150, 100, action=self.btn_Cancel)
+        #copy+rename in current dir // copy several files in other dir
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows > 0:
+          if sel_rows == 1:
+            row = self.view['tableview1'].selected_row[1]
+            filename = self.view['tableview1'].data_source.items[row]['title']
+            self.view['scrollview1'].hidden = True 
+            self.view['tableview1'].hidden = True
+            self.make_label('label1', 'Make copy of:', 6, 6, 308, 32)
+            self.make_label('label2', self.filename, 6, 46, 308, 32, color='lightgrey', border=0.5, radius=5)
+            self.make_label('label3', 'New Name:', 6, 94, 308, 32)
+            self.make_textfield('textfield1', self.filename, 6, 134, 308, 32)
+            self.make_button('button1', 'Okay', 6, 182, 150, 100, action=self.btn_Copy_Okay)
+            self.make_button('button2', 'Cancel', 164, 182, 150, 100, action=self.btn_Cancel)
+          else:
+            self.files = []
+            for row in self.view['tableview1'].selected_rows:
+              self.files.append(self.view['tableview1'].data_source.items[row[1]]['title'])
+            self.view['scrollview1'].hidden = True 
+            self.view['tableview1'].hidden = True
+            self.name = self.path_po[self.rootlen:]
+            self.make_tableview('tableview2', 6, 6, self.view.width - 12, self.view.height - 68)
+            self.view['tableview2'].flex = 'WH'
+            self.make_button('button1', 'Okay', 6, self.view.height - 56, 150, 50, action=self.btn_Copy_Okay)
+            self.view['button1'].flex = 'RT'
+            self.make_button('button2', 'Cancel', self.view.width - 156, self.view.height - 56, 150, 50, action=self.btn_Cancel)
+            self.view['button2'].flex = 'LT'
+            self.path_po = self.path
+            self.make_lst_po()
+            self.view['tableview2'].reload()
+        else:
+          self.btn_Help(None,message='Please select one file.',name='Error')
 
     def btn_Copy_Okay(self, sender):
-        if self.filename != self.view['textfield1'].text:
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows == 1:
+          if self.filename != self.view['textfield1'].text:
             shutil.copyfile(self.path + '/' + self.filename, self.path + '/' + self.view['textfield1'].text)
             self.make_lst()
             self.view['tableview1'].reload_data()
-        self.remove_view_po()
+          self.remove_view_po()
+        else:
+          error = False 
+          for filename in self.files:
+            if not os.path.isfile(self.path_po + '/' + filename): # file  doesn't exist
+              shutil.copyfile(self.path + '/' + filename,self.path_po + '/' + filename)
+            else:
+              error = True
+          self.make_lst()
+          self.view['tableview1'].reload_data()
+          self.remove_view_po()
+          if error:
+            self.btn_Help(None,message='All/Some files already exists in the destination directory.',name='Error')
 
     def btn_Rename(self, sender):
-        self.view['scrollview1'].hidden = True 
-        self.view['tableview1'].hidden = True
-        self.make_label('label1', 'Old Name:', 6, 6, 308, 32)
-        self.make_label('label2', self.filename, 6, 46, 308, 32, color='lightgrey', border=0.5, radius=5)
-        self.make_label('label3', 'New Name:', 6, 94, 308, 32)
-        self.make_textfield('textfield1', self.filename, 6, 134, 308, 32)
-        self.make_button('button1', 'Okay', 6, 182, 150, 100, action=self.btn_Rename_Okay)
-        self.make_button('button2', 'Cancel', 164, 182, 150, 100, action=self.btn_Cancel)
+        sel_rows = len(self.view['tableview1'].selected_rows)
+        if sel_rows < 2:
+          if sel_rows > 0:
+            row = self.view['tableview1'].selected_row[1]
+            self.filename = self.view['tableview1'].data_source.items[row]['title']
+          self.view['scrollview1'].hidden = True 
+          self.view['tableview1'].hidden = True
+          self.make_label('label1', 'Old Name:', 6, 6, 308, 32)
+          self.make_label('label2', self.filename, 6, 46, 308, 32, color='lightgrey', border=0.5, radius=5)
+          self.make_label('label3', 'New Name:', 6, 94, 308, 32)
+          self.make_textfield('textfield1', self.filename, 6, 134, 308, 32)
+          self.make_button('button1', 'Okay', 6, 182, 150, 100, action=self.btn_Rename_Okay)
+          self.make_button('button2', 'Cancel', 164, 182, 150, 100, action=self.btn_Cancel)
+        else:
+          self.btn_Help(None,message='Please select one item to rename a file or no item to rename the current directory.',name='Error')
 
     def btn_Rename_Okay(self, sender):
         if self.filename == '':  #rename directory
@@ -518,6 +628,7 @@ class PhoneManager(object):
         textfield.name = name
         textfield.text = text
         textfield.frame = (x, y, width, height)
+        textfield.clear_button_mode = 'always'
         self.view.add_subview(textfield)
         self.elements.append(name)
 
@@ -578,6 +689,7 @@ class PhoneManager(object):
         tableview.bg_color = 'black'
         tableview.background_color = 'white'
         tableview.allows_selection = True
+        tableview.allows_multiple_selection = True
         self.view.add_subview(tableview)
         if name != 'tableview1':  #files view
             self.elements.append(name)
@@ -596,6 +708,7 @@ class PhoneManager(object):
 
     def table_tapped(self, sender):
         filename_tapped = sender.items[sender.selected_row]['title']
+        #print filename_tapped
         if filename_tapped[0] == '/':  # we have a directory
             if filename_tapped == '/..':  # move up one
                 self.path = self.path.rpartition('/')[0]
