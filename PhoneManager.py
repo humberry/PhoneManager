@@ -139,7 +139,7 @@ class PhoneManager(object):
     def __init__(self):
         self.temp = None
         self.elements = []
-        self.view = ui.load_view('PhoneManager')
+        self.view = ui.load_view('PhoneManager2')
         self.root = os.path.expanduser('~')
         self.rootlen = len(self.root)
         self.path = os.getcwd()
@@ -162,23 +162,24 @@ class PhoneManager(object):
 
     def btn_HTMLview(self, sender):
         sel_rows = len(self.view['tableview1'].selected_rows)
-        if sel_rows > 0 and sel_rows < 2:
+        if sel_rows == 1:
           row = self.view['tableview1'].selected_row[1]
           self.view_po = ui.View()
           self.view_po.name = self.view['tableview1'].data_source.items[row]['title']
           wv = ui.WebView()
-          wv.width = self.view.width
-          wv.height = self.view.height
+          wv.width = self.view_po.width
+          wv.height = self.view_po.height
           wv.flex = 'WH'
           self.view_po.add_subview(wv)
           self.view_po.present('full_screen')
           wv.load_url(self.path + '/' + self.filename)
+          #wv.scales_page_to_fit = False
         else:
           self.btn_Help(None,message='Please select one file.',name='Error')
 
     def btn_Edit(self, sender):
         sel_rows = len(self.view['tableview1'].selected_rows)
-        if sel_rows > 0 and sel_rows < 2:
+        if sel_rows == 1:
           row = self.view['tableview1'].selected_row[1]
           filename = self.view['tableview1'].data_source.items[row]['title']
           editor.open_file(self.path + '/' + filename)
@@ -188,7 +189,7 @@ class PhoneManager(object):
 
     def btn_PicView(self, sender):
         sel_rows = len(self.view['tableview1'].selected_rows)
-        if sel_rows > 0 and sel_rows < 2:
+        if sel_rows == 1:
           row = self.view['tableview1'].selected_row[1]
           filename = self.view['tableview1'].data_source.items[row]['title']
           jpgs = get_jpgs(self.path)
@@ -293,7 +294,7 @@ class PhoneManager(object):
     @ui.in_background
     def btn_OpenIn(self, sender):
         sel_rows = len(self.view['tableview1'].selected_rows)
-        if sel_rows > 0 and sel_rows < 2:
+        if sel_rows == 1:
           row = self.view['tableview1'].selected_row[1]
           filename = self.view['tableview1'].data_source.items[row]['title']
           file = self.path + '/' + filename
@@ -328,15 +329,19 @@ class PhoneManager(object):
                 filename = url[pos:]
             else:
                 filename = self.view['textfield2'].text
-            dl = requests.get(url, stream=True)
-            with open(self.path + '/' + filename, 'wb') as f:
-                for chunk in dl.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
-                        f.flush()
-            self.make_lst()
-            self.view['tableview1'].reload_data()
-            self.remove_view_po()
+            try:
+                dl = requests.get(url, stream=True)
+                with open(self.path + '/' + filename, 'wb') as f:
+                    for chunk in dl.iter_content(chunk_size=1024):
+                        if chunk:
+                            f.write(chunk)
+                            f.flush()
+                self.make_lst()
+                self.view['tableview1'].reload_data()
+                self.remove_view_po()
+            except Exception, e:
+                self.remove_view_po()
+                self.btn_Help(None,message=str(e),name='Error')
         else:
             self.remove_view_po()
             self.btn_Help(None,message='Please start url with ftp://, http:// or https://.',name='Error')
@@ -448,8 +453,7 @@ class PhoneManager(object):
             tar.extractall(self.path + '/' + dir_name)
             tar.close()
         else:
-            #unsupported type
-            pass
+          self.btn_Help(None,message='Unsupported compression type.',name='Error')
         self.make_lst()
         self.view['tableview1'].reload_data()
       else:
@@ -457,7 +461,7 @@ class PhoneManager(object):
 
     def btn_HexView(self, sender):
         sel_rows = len(self.view['tableview1'].selected_rows)
-        if sel_rows > 0 and sel_rows < 2:
+        if sel_rows == 1:
           row = self.view['tableview1'].selected_row[1]
           filename = self.view['tableview1'].data_source.items[row]['title']
           self.hexview_a_file(filename)
@@ -514,7 +518,7 @@ class PhoneManager(object):
           self.make_button('button1', 'Okay', 6, 94, 150, 100, action=self.btn_Delete_Okay)
           self.make_button('button2', 'Cancel', 164, 94, 150, 100, action=self.btn_Cancel)
         else:
-          self.btn_Help(None,message='Please select one file.',name='Error')
+          self.btn_Help(None,message='Please select a file.',name='Error')
 
     def btn_Delete_Okay(self, sender):
         for filename in self.files:
@@ -555,7 +559,7 @@ class PhoneManager(object):
             self.make_lst_po()
             self.view['tableview2'].reload()
         else:
-          self.btn_Help(None,message='Please select one file.',name='Error')
+          self.btn_Help(None,message='Please select a file.',name='Error')
 
     def btn_Copy_Okay(self, sender):
         sel_rows = len(self.view['tableview1'].selected_rows)
@@ -576,7 +580,7 @@ class PhoneManager(object):
           self.view['tableview1'].reload_data()
           self.remove_view_po()
           if error:
-            self.btn_Help(None,message='All/Some files already exists in the destination directory.',name='Error')
+            self.btn_Help(None,message='Some or all files already exists in the destination directory.',name='Error')
 
     def btn_Rename(self, sender):
         sel_rows = len(self.view['tableview1'].selected_rows)
@@ -753,12 +757,12 @@ class PhoneManager(object):
         self.view.name = filename
         self.make_button('btn_close', 'X', 6, 6, 32, 32, self.btn_Cancel)
         self.make_textfield('tf_search', '', 44, 6, self.view.width - 156, 32)
-        self.view['tf_search'].flex = 'WR'
+        self.view['tf_search'].flex = 'W'
         self.make_button('btn_search', 'Search', self.view.width - 106, 6, 100, 32, self.btn_Search)
-        self.view['btn_search'].flex = 'WL'
+        self.view['btn_search'].flex = 'L'
         full_pathname = self.path + '/' + filename
-        self.make_textview('tv_data', hex_view(full_pathname), 6, 46, self.view.width - 12, 452, edit=False, color='lightgrey', border=0.5, radius=5)
-        self.view['tv_data'].flex = 'WR'
+        self.make_textview('tv_data', hex_view(full_pathname), 6, 46, self.view.width - 12, self.view.height - 50, edit=False, color='lightgrey', border=0.5, radius=5)
+        self.view['tv_data'].flex = 'WH'
 
     @ui.in_background
     def fileinfo(self, sender):
