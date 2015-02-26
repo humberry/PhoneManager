@@ -139,7 +139,7 @@ class PhoneManager(object):
     def __init__(self):
         self.temp = None
         self.elements = []
-        self.view = ui.load_view('PhoneManager2')
+        self.view = ui.load_view('PhoneManager')
         self.root = os.path.expanduser('~')
         self.rootlen = len(self.root)
         self.path = os.getcwd()
