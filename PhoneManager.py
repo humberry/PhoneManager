@@ -1,7 +1,6 @@
 # coding: utf-8
 
-import datetime, os, ui, shutil, console, sys, clipboard, requests, zipfile, zlib, tarfile, photos, editor, time
-from PIL import Image
+import datetime, os, ui, shutil, console, sys, clipboard, requests, zipfile, zlib, tarfile, photos, editor, time, Image, struct
 
 def get_dir(path = os.path.expanduser('~')):
     dirs  = [] if path == os.path.expanduser('~') else ['..']
@@ -34,13 +33,15 @@ def get_dirs(path = os.path.expanduser('~')):
     dirs = ['/' + directory for directory in dir]
     return dirs
 
-def get_jpgs(path):
+def get_imgs(path):
     files = []
+    types = ['.jpg', '.png', '.gif', '.bmp', '.tif']
     i = 0
     for entry in sorted(os.listdir(path)):
         if os.path.isfile(path + '/' + entry):
             ext = entry[len(entry)-4:]
-            if ext == '.jpg' or ext == '.JPG':
+            for t in types:
+              if ext == t or ext == t.upper():
                 files.append(entry)
                 i += 1
     sorted(files)
@@ -62,7 +63,7 @@ def hex_view(filepath):
     return return_value
 
 class MyImageView(ui.View):
-    def __init__(self,path,file,jpgs,index):
+    def __init__(self,path,file,imgs,index):
         self.color = 'white'
         self.x_off = 0
         self.y_off = 0
@@ -73,9 +74,9 @@ class MyImageView(ui.View):
         self.ratio = 1.0
         self.path = path
         self.file = file
-        self.jpgs = jpgs
+        self.imgs = imgs
         self.index = index
-        self.len_jpgs = len(jpgs)
+        self.len_imgs = len(imgs)
         if self.img != None:
             self.img_width, self.img_height = self.img.size
             self.name = self.file + ' (' + str(self.img_width) + ',' + str(self.img_height) + ')'
@@ -92,14 +93,14 @@ class MyImageView(ui.View):
 
     def touch_began(self, touch):
         self.index += 1
-        if self.index < self.len_jpgs:
-            self.img = ui.Image.named(self.path + '/' + self.jpgs[self.index])
+        if self.index < self.len_imgs:
+            self.img = ui.Image.named(self.path + '/' + self.imgs[self.index])
         else:
             self.index = 0
-            self.img = ui.Image.named(self.path + '/' + self.jpgs[self.index])
+            self.img = ui.Image.named(self.path + '/' + self.imgs[self.index])
         if self.img != None:
             self.img_width, self.img_height = self.img.size
-            self.name = self.jpgs[self.index] + ' (' + str(self.img_width) + ',' + str(self.img_height) + ')'
+            self.name = self.imgs[self.index] + ' (' + str(self.img_width) + ',' + str(self.img_height) + ')'
             self.layout()
             self.set_needs_display()
         else:
@@ -173,7 +174,7 @@ class PhoneManager(object):
           self.view_po.add_subview(wv)
           self.view_po.present('full_screen')
           wv.load_url(self.path + '/' + self.filename)
-          #wv.scales_page_to_fit = False
+          wv.scales_page_to_fit = True
         else:
           self.btn_Help(None,message='Please select one file.',name='Error')
 
@@ -192,23 +193,41 @@ class PhoneManager(object):
         if sel_rows == 1:
           row = self.view['tableview1'].selected_row[1]
           filename = self.view['tableview1'].data_source.items[row]['title']
-          jpgs = get_jpgs(self.path)
-          index = jpgs.index(filename)
-          self.view_po =MyImageView(self.path,filename,jpgs,index)
+          imgs = get_imgs(self.path)
+          index = imgs.index(filename)
+          self.view_po = MyImageView(self.path,filename,imgs,index)
           self.view_po.present('full_screen')
         else:
           self.btn_Help(None,message='Please select start file.',name='Error')
 
     @ui.in_background
     def btn_GetPic(self, sender):
-        img = photos.pick_image()
-        if not img:
-            return
+        bytestring = photos.pick_image(raw_data=True)
+        png = bytearray.fromhex('89504E47')
+        jpg = bytearray.fromhex('FFD8FF')
+        gif = bytearray.fromhex('474946')
+        bmp = bytearray.fromhex('424D')
+        tif = bytearray.fromhex('49492A')
+        ext = ''
+        if bytestring[0:4] == png:
+          ext = '.png'
+        elif bytestring[0:3] == jpg:
+          ext = '.jpg'
+        elif bytestring[0:3] == gif:
+          ext = '.gif'
+        elif bytestring[0:2] == bmp:
+          ext = '.bmp'
+        elif bytestring[0:3] == tif:
+          ext = '.tif'
+        else:
+          self.btn_Help(None,message="Unknown image type! (Only png, jpg, gif, bmp and tif are supported)",name='Error')
+          return
         for i in xrange(sys.maxint):
-            filename = '{}/image{}.jpg'.format(self.path, str(i).zfill(3))
-            if not os.path.exists(filename):
-                img.save(filename, 'JPEG')
-                break
+          filename = '{}/image{}'.format(self.path, str(i).zfill(3)) + ext
+          if not os.path.exists(filename):
+            file = open(filename, 'wb')
+            file.write(bytestring)
+            break
         self.make_lst()
         self.view['tableview1'].reload_data()
 
