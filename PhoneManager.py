@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import datetime, os, ui, shutil, console, sys, clipboard, requests, zipfile, zlib, tarfile, photos, editor, time, Image, struct
+import datetime, os, ui, shutil, console, sys, clipboard, requests, zipfile, zlib, tarfile, photos, editor, time, struct, Image
 
 def get_dir(path = os.path.expanduser('~')):
     dirs  = [] if path == os.path.expanduser('~') else ['..']
@@ -160,7 +160,52 @@ class PhoneManager(object):
         for subview in self.view['scrollview1'].subviews:      # with EXACTLY the same name as the button name
             if isinstance(subview, ui.Button):  # `self.view['btn_Help'].action = self.btn_Help`
                 subview.action = getattr(self, subview.name)
+                
+    def btn_Select(self, sender):
+        self.view['scrollview1'].hidden = True 
+        self.view['tableview1'].hidden = True
+        self.name = self.path_po[self.rootlen:]
+        self.make_textfield('tf_filter', '*.jpg', 6, 6, 308, 32)
+        self.make_segcontr('sc_select', ['All/None', 'Filter', '*.py*'], 6, 46, 308, 64)
+        self.make_button('button1', 'Okay', 6, 118, 150, 100, action=self.btn_Select_Okay)
+        self.make_button('button2', 'Cancel', 164, 118, 150, 100, action=self.btn_Cancel)
 
+    def btn_Select_Okay(self, sender):
+        def search_table(search_str):
+          length = len(self.view['tableview1'].data_source.items)
+          r = []
+          for i in range(1, length):
+            if search_str != '.*':
+              pos = self.view['tableview1'].data_source.items[i]['title'].rfind(search_str)
+              if pos > -1:
+                t = tuple([0, i])
+                r.append(t)
+            else:
+              t = tuple([0, i])
+              r.append(t)
+            self.view['tableview1'].selected_rows = r
+              
+        rows = self.view['tableview1'].selected_rows
+        select = self.view['sc_select'].selected_index
+        search_str = ''
+        if select == 0:
+            if rows == []:
+              search_str = '.*'
+              search_table(search_str)
+            else:
+              self.view['tableview1'].selected_rows = []
+              self.view['tableview1'].reload_data()
+        elif select == 2:
+            search_str = '.py'
+            search_table(search_str)
+        else:
+            ext = self.view['tf_filter'].text
+            pos = ext.find('*.')
+            if pos == 0:
+              search_str = ext[pos+1:]
+              search_table(search_str)
+        self.remove_view_po()
+                
     def btn_HTMLview(self, sender):
         sel_rows = len(self.view['tableview1'].selected_rows)
         if sel_rows == 1:
@@ -233,7 +278,7 @@ class PhoneManager(object):
 
     def btn_Help(self, sender, message='', name='Help'):
         if message == '':
-            message = 'Scroll buttons to the left for all commands.\nRemoveDir deletes everthing in the current dir (files and subdirs).\nExtract always creates a subdir with the archivename.\nPicView now browses all JPEGs.\nMove and Rename are changing the directory path/name when no file is selected!!!\nMultiselect for move, copy, delete and compress.\nUse at your own risk. Error handling is sometimes missing!'
+            message = 'Scroll buttons to the left for all commands.\nRemoveDir deletes everthing in the current dir (files and subdirs).\nExtract always creates a subdir with the archivename.\nPicView now browses png, jpg, gif, bmp and tif.\nMove and Rename are changing the directory path/name when no file is selected!!!\nMultiselect for move, copy, delete and compress.\nUse at your own risk.'
         self.temp = self.view.name
         self.view['scrollview1'].hidden = True 
         self.view['tableview1'].hidden = True
