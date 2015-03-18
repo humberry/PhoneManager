@@ -267,14 +267,16 @@ class PhoneManager(object):
         else:
           self.btn_Help(None,message="Unknown image type! (Only png, jpg, gif, bmp and tif are supported)",name='Error')
           return
+        size = len(bytestring)
         for i in xrange(sys.maxint):
-          filename = '{}/image{}'.format(self.path, str(i).zfill(3)) + ext
+          filename = 'image{}'.format(str(i).zfill(3)) + ext
           if not os.path.exists(filename):
-            file = open(filename, 'wb')
+            file = open(self.path + '/' + filename, 'wb')
             file.write(bytestring)
             break
         self.make_lst()
         self.view['tableview1'].reload_data()
+        console.hud_alert(filename + ' / ' + str(size / 1024) + ' kB', duration = 3.0)
 
     def btn_Help(self, sender, message='', name='Help'):
         if message == '':
