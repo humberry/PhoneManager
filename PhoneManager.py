@@ -268,7 +268,7 @@ class PhoneManager(object):
           self.btn_Help(None,message="Unknown image type! (Only png, jpg, gif, bmp and tif are supported)",name='Error')
           return
         size = len(bytestring)
-        for i in xrange(sys.maxint):
+        for i in range(sys.maxsize):
           filename = 'image{}'.format(str(i).zfill(3)) + ext
           if not os.path.exists(filename):
             file = open(self.path + '/' + filename, 'wb')
