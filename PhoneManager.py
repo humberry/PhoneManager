@@ -54,9 +54,8 @@ def hex_view(filepath):
             for line in range(0, os.path.getsize(filepath), 16):
                 h = s = ''
                 for c in in_file.read(16):
-                    i = c
-                    h += '{:02X} '.format(i)
-                    s += c if 31 < i < 127 else '.'
+                    h += '{:02X} '.format(c)
+                    s += chr(c) if 31 < c < 127 else '.'
                 return_value += '0x{:08X} | {:48}| {:8}\n'.format(line, h, s)
     except Exception as e:
         return 'Error!\nFile = {}\nError = {}'.format(filepath, e)
