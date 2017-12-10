@@ -1,3 +1,4 @@
+#! python3
 # coding: utf-8
 
 import datetime, os, ui, shutil, console, sys, clipboard, requests, zipfile, zlib, tarfile, photos, editor, time, struct, Image
