@@ -9,7 +9,7 @@ Scroll buttons to the left for all commands.<br />
 <br />
 RemoveDir deletes everthing in the current dir (files and subdirs) <br />
 Extract always creates a subdir with the archivename<br />
-GetPic multiselect<br />
+GetPic multiselect photos from camera roll<br />
 PicView now browses all heic, jpeg, jpg, png, gif, bmp, and tif files<br />
 Move and Rename are changing the directory path/name when no file is selected!!!<br />
 Multiselect for move, copy, delete and compress.<br />
