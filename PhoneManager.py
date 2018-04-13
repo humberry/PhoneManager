@@ -258,8 +258,6 @@ class PhoneManager(object):
                     if not os.path.exists(filename):
                         with open(filename, 'wb') as f:
                             f.write(data.read())
-                            #file = open(self.path + '/' + filename, 'wb')
-                            #file.write(bytestring)
                             break
             console.hud_alert('Saved ' + str(len(picked)) + ' files', duration = 3.0)
         self.make_lst()
